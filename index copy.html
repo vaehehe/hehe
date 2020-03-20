@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Document</title>
+  <!-- 导入页面的基本样式 -->
+  <link rel="stylesheet" href="./css/search.css" />
+  <!-- 导入 jQuery -->
+  <script src="./lib/jquery.js"></script>
+
+  <style>
+    .suggest-item {
+      height: 28px;
+      line-height: 28px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Logo -->
+    <img src="./images/taobao_logo.png" alt="" class="logo" />
+
+    <div class="box">
+      <!-- tab 栏 -->
+      <div class="tabs">
+        <div class="tab-active">宝贝</div>
+        <div>店铺</div>
+      </div>
+      <!-- 搜索区域（搜索框和搜索按钮） -->
+      <div class="search-box">
+        <input type="text" class="ipt" placeholder="请输入要搜索的内容" />
+        <button class="btnSearch">
+          搜索
+        </button>
+      </div>
+      <!-- 下面是搜索建议 -->
+      <div id="suggest-list"></div>
+    </div>
+  </div>
+  <!-- 引入js文件 -->
+  <script src="./lib/template-web.js"></script>
+
+  <!-- 模板引擎创建 -->
+  <script type="text/html" id='muban'>
+    {{each result val}}
+    <div class="suggest-item">{{val[0]}}</div>
+    {{/each}}
+  </script>
+
+
+  <script>
+    //定义缓存对象,用于保存搜索建议 ,实际保存到本地存储中
+    var cacheObj = {};
+
+    //定义全局变量
+    var timer = null;
+
+    // 注册输入框,注册键盘弹起事件
+    $('.ipt').keyup(function () {
+      var val = $(this).val().trim();
+      if (val == "") {
+        return $('#suggest-list').empty().hide();
+      }
+      //值不是空,发送请求,在发送请求之前先看缓存中有没有搜素建议
+      if (cacheObj[val]) {
+        console.log(111);
+        var str = template('muban', cacheObj[val]);
+        $('#suggest-list').html(str).show();
+        clearTimeout(timer);
+        return;
+      }
+
+      //当timer不是null的时候,说明输入框有内容,已经触发定时器,此时,
+      //需要清空定时器,阻止发送数据,因为还有内容要输入
+      if (timer != null) {
+        clearTimeout(timer);
+      }
+
+
+      //设置防抖策略 用定时器
+      timer = setTimeout(function () {
+        getSuggest(val);
+      }, 1000);
+
+
+    });
+
+    //封装函数,实现JSONP请求,获取给出的建议
+    function getSuggest(a) {
+      // 接口
+      $.ajax({
+        url: 'https://suggest.taobao.com/sug',
+        data: { q: a },
+        success: function (res) {
+          console.log(res);
+
+          //记住搜索建议
+          cacheObj[a] = res;
+
+          if (res.result.length <= 0) {
+            return $('#suggest-list').empty().hide();
+          }
+          var str = template('muban', res);
+          $('#suggest-list').html(str).show();
+
+        },
+        dataType: 'jsonp'
+      });
+
+    }
+
+
+
+  </script>
+
+
+
+
+
+</body>
+
+</html>

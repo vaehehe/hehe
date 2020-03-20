@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+    <!-- 导入页面的基本样式 -->
+    <link rel="stylesheet" href="./css/search.css" />
+    <!-- 导入 jQuery -->
+    <script src="./lib/jquery.js"></script>
+
+    <style>
+        .suggest-item {
+            height: 28px;
+            line-height: 28px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Logo -->
+        <img src="./images/taobao_logo.png" alt="" class="logo" />
+
+        <div class="box">
+            <!-- tab 栏 -->
+            <div class="tabs">
+                <div class="tab-active">宝贝</div>
+                <div>店铺</div>
+            </div>
+            <!-- 搜索区域（搜索框和搜索按钮） -->
+            <div class="search-box">
+                <input type="text" class="ipt" placeholder="请输入要搜索的内容" />
+                <button class="btnSearch">
+                    搜索
+                </button>
+            </div>
+            <!-- 下面是搜索建议 -->
+            <div id="suggest-list"></div>
+        </div>
+    </div>
+    <!-- 引入js文件 -->
+    <script src="./lib/template-web.js"></script>
+
+    <!-- 模板引擎创建 -->
+    <script type="text/html" id='muban'>
+    {{each result val}}
+    <div class="suggest-item">{{val[0]}}</div>
+    {{/each}}
+  </script>
+
+
+
+    <script>
+        //设置cacheObj缓存
+        var cacheObj = {};
+        //全局变量
+        var timer = null;
+        // 注册输入框,注册键盘弹起事件
+        $('.ipt').keyup(function () {
+            var val = $(this).val().trim();
+            if (val == "") {
+                clearTimeout(timer);
+                return $('#suggest-list').empty().hide();
+            }
+
+            //判断输入的内容是否和缓存中的键值一致
+            if (val == cacheObj[val]) {
+                var str = template('muban', cacheObj[val]);
+                $('#suggest-list').html(str).show();
+                return;
+            }
+
+            //判断
+            if (localStorage.getItem(val)) {
+                var str = template('muban', JSON.parse(localStorage.getItem(val)));
+                $('#suggest-list').html(str).show();
+                return;
+            }
+
+            //当输入框的事件触发之后不是马上调用函数,而是等待50ms,再去发送请求,
+            // 如果在这50ms之内,时间又触发了,则从新计时,还是50ms
+            if (timer != null) {
+                //说明刚刚触发了下面的定时器,言外之意刚刚触发过事件
+                //为了阻止发送内容(因为我们没有输入完内容)
+                clearTimeout(timer);
+            }
+
+            timer = setTimeout(function () {
+                getSuggest(val);
+            }, 1000)
+
+
+        });
+        //封装函数,实现JSONP请求,获取给出的建议
+        function getSuggest(text) {
+            // 接口
+            $.ajax({
+                url: 'https://suggest.taobao.com/sug',
+                data: { q: text }, //文档要求的q,val就是输入的值
+                success: function (res) {
+                    console.log(res);
+
+                    //将获取的内容存到cacheObj中
+                    //变量的值作为对象的属性,必须用[],才能获取到变量的值
+                    // cacheObj[text] = res;
+
+                    //localStorage.setItem(key,value)向本地存储找中保存数据
+                    //localStorage.getItem(key);向本地存储中获取值
+                    //注意:存的时候,不能是JS对象;解决办法JS对象转成JSON,字符串,然后再存
+                    localStorage.setItem(text, JSON.stringify(res));
+
+                    if (res.result.length <= 0) {
+                        return $('#suggest-list').empty().hide();
+                    }
+                    var str = template('muban', res);
+                    $('#suggest-list').html(str).show();
+                },
+                dataType: 'jsonp'
+            });
+
+        }
+
+    </script>
+
+
+
+
+</body>
+
+</html>
